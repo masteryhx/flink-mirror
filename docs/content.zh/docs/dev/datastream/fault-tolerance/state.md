@@ -536,7 +536,7 @@ import org.apache.flink.api.common.state.StateTtlConfig;
 
 StateTtlConfig ttlConfig = StateTtlConfig
     .newBuilder(Time.seconds(1))
-    .cleanupInRocksdbCompactFilter(1000)
+    .cleanupInRocksdbCompactFilter(1000, 0xfffffffffffffffeL)
     .build();
 ```
 {{< /tab >}}
@@ -546,7 +546,7 @@ import org.apache.flink.api.common.state.StateTtlConfig
 
 val ttlConfig = StateTtlConfig
     .newBuilder(Time.seconds(1))
-    .cleanupInRocksdbCompactFilter(1000)
+    .cleanupInRocksdbCompactFilter(1000, 0xfffffffffffffffeL)
     .build
 ```
 {{< /tab >}}
@@ -557,7 +557,7 @@ from pyflink.datastream.state import StateTtlConfig
 
 ttl_config = StateTtlConfig \
   .new_builder(Time.seconds(1)) \
-  .cleanup_in_rocksdb_compact_filter(1000) \
+  .cleanup_in_rocksdb_compact_filter(1000, 0xfffffffffffffffe) \
   .build()
 ```
 {{< /tab >}}
@@ -567,6 +567,14 @@ Flink 处理一定条数的状态数据后，会使用当前时间戳来检测 R
 你可以通过 `StateTtlConfig.newBuilder(...).cleanupInRocksdbCompactFilter(long queryTimeAfterNumEntries)` 方法指定处理状态的条数。
 时间戳更新的越频繁，状态的清理越及时，但由于压缩会有调用 JNI 的开销，因此会影响整体的压缩性能。
 RocksDB backend 的默认后台清理策略会每处理 1000 条数据进行一次。
+
+定期压缩可以加速过期状态条目的清理，特别是对于很少访问的状态条目。
+比这个值早的文件将被选取进行压缩，并重新写入与之前相同的 Level 中。 
+该功能可以确保文件定期通过压缩过滤器压缩。
+您可以通过`StateTtlConfig.newBuilder(...).cleanupInRocksdbCompactFilter(long queryTimeAfterNumEntries, long periodicCompactionSeconds)` 
+方法设定定期压缩的时间。
+定期压缩的时间的默认值是 0xfffffffffffffffeL，即让 RocksDB 根据需要控制这个特性。
+您可以将其设置为 0 以关闭定期压缩或设置一个较小的值以加速过期状态条目的清理，但它可能会降低压缩性能。
 
 你还可以通过配置开启 RocksDB 过滤器的 debug 日志：
 `log4j.logger.org.rocksdb.FlinkCompactionFilter=DEBUG`

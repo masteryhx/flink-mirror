@@ -598,7 +598,7 @@ import org.apache.flink.api.common.state.StateTtlConfig;
 
 StateTtlConfig ttlConfig = StateTtlConfig
     .newBuilder(Time.seconds(1))
-    .cleanupInRocksdbCompactFilter(1000)
+    .cleanupInRocksdbCompactFilter(1000, 0xfffffffffffffffeL)
     .build();
 ```
 {{< /tab >}}
@@ -608,7 +608,7 @@ import org.apache.flink.api.common.state.StateTtlConfig
 
 val ttlConfig = StateTtlConfig
     .newBuilder(Time.seconds(1))
-    .cleanupInRocksdbCompactFilter(1000)
+    .cleanupInRocksdbCompactFilter(1000, 0xfffffffffffffffeL)
     .build
 ```
 {{< /tab >}}
@@ -619,7 +619,7 @@ from pyflink.datastream.state import StateTtlConfig
 
 ttl_config = StateTtlConfig \
   .new_builder(Time.seconds(1)) \
-  .cleanup_in_rocksdb_compact_filter(1000) \
+  .cleanup_in_rocksdb_compact_filter(1000, 0xfffffffffffffffe) \
   .build()
 ```
 {{< /tab >}}
@@ -632,6 +632,15 @@ You can change it and pass a custom value to
 Updating the timestamp more often can improve cleanup speed 
 but it decreases compaction performance because it uses JNI call from native code.
 The default background cleanup for RocksDB backend queries the current timestamp each time 1000 entries have been processed.
+
+Periodic compaction could speed up expired state entries cleanup, especially for state entries rarely accessed. 
+Files older than this value will be picked up for compaction, and re-written to the same level as they were before. 
+It makes sure a file goes through compaction filters periodically.
+You can change it and pass a custom value to
+`StateTtlConfig.newBuilder(...).cleanupInRocksdbCompactFilter(long queryTimeAfterNumEntries, long periodicCompactionSeconds)` method.
+The default value of Periodic compaction seconds is 0xfffffffffffffffeL which lets RocksDB control this feature as needed.
+You could set it to 0 to turn off periodic compaction or set a small value to speed up expired state entries cleanup, but it
+may decrease compaction performance.
 
 You can activate debug logs from the native code of RocksDB filter 
 by activating debug level for `FlinkCompactionFilter`:
